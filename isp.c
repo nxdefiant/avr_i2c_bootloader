@@ -5,7 +5,7 @@
 #include "main.h"
 #include "isp.h"
 
-#if SPM_PAGESIZE != 64
+#if SPM_PAGESIZE != 64 && SPM_PAGESIZE != 128
 #error "fail"
 #endif
 
@@ -73,6 +73,9 @@ void handle_command(uint8_t *data) {
 			break;
 		case 0x6: // jump
 			boot_addr = ispcmd->addr;
+			break;
+		case 0x7: // Get Pagesize
+			data[0] = SPM_PAGESIZE;
 			break;
 		case 0x99: // Info
 			strncpy((char*)data, "Bootloader", 11);

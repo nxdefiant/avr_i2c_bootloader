@@ -1,7 +1,11 @@
 #ifndef ISP_H
 #define ISP_H
 
+#if defined (__AVR_ATmega8__)
 #define BOOT_ADDR_START 0x1c00
+#elif defined (__AVR_ATmega32__)
+#define BOOT_ADDR_START 0x3c00
+#endif
 
 typedef struct _ispcmd {
 	uint8_t cmd;
