@@ -34,15 +34,10 @@
 # mth 2004/09
 # Differences from WinAVR 20040720 sample:
 # - DEPFLAGS according to Eric Weddingtion's fix (avrfreaks/gcc-forum)
-# - F_OSC Define in CFLAGS and AFLAGS
 
 
 # MCU name
-MCU = atmega32
-
-# Main Oscillator Frequency
-# This is only used to define F_OSC in all assembler and c-sources.
-F_OSC = 4000000
+MCU = atmega328p
 
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex
@@ -90,7 +85,7 @@ EXTRAINCDIRS =
 CSTANDARD = -std=gnu99
 
 # Place -D or -U options here
-CDEFS = -DF_CPU=F_OSC
+CDEFS =
 
 # Place -I options here
 CINCS =
@@ -112,7 +107,6 @@ CFLAGS += -Wall -Wstrict-prototypes
 CFLAGS += -Wa,-adhlns=$(<:.c=.lst)
 CFLAGS += $(patsubst %,-I%,$(EXTRAINCDIRS))
 CFLAGS += $(CSTANDARD)
-CFLAGS += -DF_OSC=$(F_OSC)
 
 # Assembler flags.
 #  -Wa,...:   tell GCC to pass this to the assembler.
@@ -122,7 +116,6 @@ CFLAGS += -DF_OSC=$(F_OSC)
 #             and function names needs to be present in the assembler source
 #             files -- see avr-libc docs [FIXME: not yet described there]
 ASFLAGS = -Wa,-adhlns=$(<:.S=.lst),-gstabs
-ASFLAGS += -DF_OSC=$(F_OSC)
 
 
 #Additional libraries.
@@ -163,14 +156,23 @@ EXTMEMOPTS =
 #    --cref:    add cross reference to  map file
 LDFLAGS = -Wl,-Map=$(TARGET).map,--cref
 LDFLAGS += $(EXTMEMOPTS)
-LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
+LDFLAGS += -mmcu=$(MCU)
+#LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
 
 ifeq ($(MCU),atmega8)
-LDFLAGS += -Ttext=0x1c00
+BOOT_TEXT_START=0x1800
 else ifeq ($(MCU),atmega32)
-# Bootloader size=2048 (1024 words) => Startaddr=0x7800
-LDFLAGS += -Ttext=0x7800
+# Flash size=32k, Bootloader size=2k (1024 words), 32k-2k => Startaddr=0x7800
+BOOT_TEXT_START=0x7800
+else ifeq ($(MCU),atmega328p)
+# Flash size=32k, Bootloader size=2k (1024 words), 32k-2k => Startaddr=0x7800
+BOOT_TEXT_START=0x7800
+else
+$(error Unsupported AVR model)
 endif
+
+CFLAGS += -DBOOT_TEXT_START=$(BOOT_TEXT_START)
+LDFLAGS += -Ttext=$(BOOT_TEXT_START)
 
 # Programming support using avrdude. Settings and variables.
 
@@ -382,7 +384,7 @@ extcoff: $(TARGET).elf
 %.elf: $(OBJ)
 	@echo
 	@echo $(MSG_LINKING) $@
-	$(CC) $(ALL_CFLAGS) $(OBJ) --output $@ $(LDFLAGS)
+	$(CC) $(OBJ) --output $@ $(LDFLAGS)
 
 
 # Compile: create object files from C source files.

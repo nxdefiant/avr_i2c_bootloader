@@ -3,6 +3,7 @@
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
+#include <avr/wdt.h>
 #include <util/twi.h>
 #include "main.h"
 #include "isp.h"
@@ -17,6 +18,19 @@ static volatile uint8_t bExecute;
 volatile uint8_t memarea[SIZE_MEMAREA];
 static volatile unsigned short count;
 extern void boot (void) __asm__("0") __attribute__((__noreturn__));
+
+#if defined (__AVR_ATmega328P__)
+void get_mcusr(void) __attribute__((naked)) __attribute__((section(".init3")));
+
+// On new Devices the watchdog stays active after reset
+// so it must be disabled early
+void get_mcusr(void)
+{
+	MCUSR &= ~(1 << WDRF);
+	wdt_disable();
+}
+#endif
+
 
 ISR(TWI_vect)
 {
@@ -72,7 +86,6 @@ int main(void)
 		// bootloader force running
 		eeprom_write_byte((uint8_t*)0, 0);
 		bForceRunning = 1;
-		MCUSR = 0;
 	}
 
 	// check for valid program
@@ -86,10 +99,15 @@ int main(void)
 	count = 0;
 
 	// Move Interrupt Vector	
+#ifdef GICR
 	temp = GICR;
 	GICR = temp | (1<<IVCE);
 	GICR = temp | (1<<IVSEL);
-					
+#else
+	temp = MCUCR;
+	MCUCR = temp | (1<<IVCE);
+	MCUCR = temp | (1<<IVSEL);
+#endif // GICR
 	// i2c setup
 	TWAR = 0x50;
 	TWI_ACK;
@@ -108,10 +126,18 @@ int main(void)
 		if (boot_addr != -1) {
 			cli();
 			// Move Interrupt Vector	
+#ifdef GICR
 			temp = GICR;
 			GICR = temp | (1<<IVCE);
 			GICR = temp & ~(1<<IVSEL);
+#else
+			temp = MCUCR;
+			MCUCR = temp | (1<<IVCE);
+			MCUCR = temp & ~(1<<IVSEL);
+
+#endif // GICR
 			boot();
+
 		}
 	}
 
