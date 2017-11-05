@@ -1,0 +1,5 @@
+AVR I2C Bootloader
+
+For client application see https://github.com/nxdefiant/pyshared/blob/master/bootloader.py
+Example:
+./bootloader.py 0x52 main.hex -j
